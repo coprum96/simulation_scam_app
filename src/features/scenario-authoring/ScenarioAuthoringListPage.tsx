@@ -37,6 +37,11 @@ export function ScenarioAuthoringListPage() {
     void ensureRegistry()
   }, [ensureRegistry])
 
+  const catalog = useMemo(() => {
+    void refreshKey
+    return listAuthoringCatalog()
+  }, [refreshKey])
+
   if (boot.status === 'loading' || boot.status === 'idle') {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-center">
@@ -45,11 +50,6 @@ export function ScenarioAuthoringListPage() {
       </div>
     )
   }
-
-  const catalog = useMemo(() => {
-    void refreshKey
-    return listAuthoringCatalog()
-  }, [refreshKey])
 
   const handleImportFile = async (file: File) => {
     if (!canImport) return

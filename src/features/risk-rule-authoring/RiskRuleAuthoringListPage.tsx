@@ -36,6 +36,11 @@ export function RiskRuleAuthoringListPage() {
     void ensureRegistry()
   }, [ensureRegistry])
 
+  const catalog = useMemo(() => {
+    void refreshKey
+    return listRiskRuleAuthoringCatalog()
+  }, [refreshKey])
+
   if (boot.status === 'loading' || boot.status === 'idle') {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-center">
@@ -44,11 +49,6 @@ export function RiskRuleAuthoringListPage() {
       </div>
     )
   }
-
-  const catalog = useMemo(() => {
-    void refreshKey
-    return listRiskRuleAuthoringCatalog()
-  }, [refreshKey])
 
   const handleImportFile = async (file: File) => {
     if (!canImport) return
