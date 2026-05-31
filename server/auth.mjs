@@ -11,11 +11,40 @@ const sessions = new Map()
 
 let usersCache = null
 
+const DEMO_USERS = [
+  {
+    id: 'user_viewer',
+    username: 'viewer',
+    password: 'viewer',
+    displayName: 'Наблюдатель',
+    role: 'viewer',
+  },
+  {
+    id: 'user_editor',
+    username: 'editor',
+    password: 'editor',
+    displayName: 'Редактор',
+    role: 'editor',
+  },
+  {
+    id: 'user_publisher',
+    username: 'publisher',
+    password: 'publisher',
+    displayName: 'Публикатор',
+    role: 'publisher',
+  },
+]
+
 async function loadUsers() {
   if (usersCache) return usersCache
-  const raw = await fs.readFile(USERS_FILE, 'utf8')
-  usersCache = JSON.parse(raw)
-  return usersCache
+  try {
+    const raw = await fs.readFile(USERS_FILE, 'utf8')
+    usersCache = JSON.parse(raw)
+    return usersCache
+  } catch {
+    usersCache = DEMO_USERS
+    return usersCache
+  }
 }
 
 function json(res, status, body) {
