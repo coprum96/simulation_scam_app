@@ -1,0 +1,23 @@
+[
+  {
+    "id": "user_viewer",
+    "username": "viewer",
+    "password": "viewer",
+    "displayName": "Наблюдатель",
+    "role": "viewer"
+  },
+  {
+    "id": "user_editor",
+    "username": "editor",
+    "password": "editor",
+    "displayName": "Редактор",
+    "role": "editor"
+  },
+  {
+    "id": "user_publisher",
+    "username": "publisher",
+    "password": "publisher",
+    "displayName": "Публикатор",
+    "role": "publisher"
+  }
+]
