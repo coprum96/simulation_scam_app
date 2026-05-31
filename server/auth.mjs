@@ -7,7 +7,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const USERS_FILE = path.join(__dirname, 'data', 'users.json')
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12
-const sessions = new Map()
+
+/** Stateless sessions for Vercel serverless (no shared in-memory store). */
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ?? 'scam-app-ru-demo-session-secret-do-not-use-in-production'
 
 let usersCache = null
 
@@ -75,19 +78,43 @@ function toPublicUser(user) {
   }
 }
 
-export function createSession(user) {
-  const token = crypto.randomBytes(24).toString('hex')
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString()
-  sessions.set(token, {
-    token,
-    expiresAt,
-    user: toPublicUser(user),
-  })
-  return { token, user: toPublicUser(user), expiresAt }
+function signSessionPayload(payload) {
+  const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url')
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url')
+  return `${body}.${sig}`
 }
 
-export function destroySession(token) {
-  sessions.delete(token)
+function verifySignedToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null
+  const dot = token.indexOf('.')
+  const body = token.slice(0, dot)
+  const sig = token.slice(dot + 1)
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url')
+  if (sig.length !== expected.length) return null
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'))
+    if (!parsed?.u || typeof parsed.exp !== 'number') return null
+    if (parsed.exp < Date.now()) return null
+    return {
+      token,
+      user: parsed.u,
+      expiresAt: new Date(parsed.exp).toISOString(),
+    }
+  } catch {
+    return null
+  }
+}
+
+export function createSession(user) {
+  const expiresAtMs = Date.now() + SESSION_TTL_MS
+  const publicUser = toPublicUser(user)
+  const token = signSessionPayload({ u: publicUser, exp: expiresAtMs })
+  return { token, user: publicUser, expiresAt: new Date(expiresAtMs).toISOString() }
+}
+
+export function destroySession(_token) {
+  // Stateless tokens — client clears token; no server-side session store on serverless.
 }
 
 export async function authenticateRequest(req) {
@@ -96,13 +123,7 @@ export async function authenticateRequest(req) {
     return null
   }
   const token = header.slice(7).trim()
-  const session = sessions.get(token)
-  if (!session) return null
-  if (new Date(session.expiresAt).getTime() < Date.now()) {
-    sessions.delete(token)
-    return null
-  }
-  return session
+  return verifySignedToken(token)
 }
 
 export async function handleAuthRoutes(req, res, url) {
@@ -125,8 +146,6 @@ export async function handleAuthRoutes(req, res, url) {
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/logout') {
-    const session = await authenticateRequest(req)
-    if (session) destroySession(session.token)
     return json(res, 200, { ok: true }), true
   }
 
