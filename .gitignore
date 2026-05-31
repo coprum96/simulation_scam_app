@@ -24,3 +24,4 @@ server/data/session-archive.json
 *.njsproj
 *.sln
 *.sw?
+.vercel
