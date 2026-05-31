@@ -76,13 +76,9 @@ function hydrateFromLocal(): void {
 }
 
 let initPromise: Promise<void> | null = null
+let initGeneration = 0
 
-/** Public app shell: local cache only unless a governance token is present. */
-export async function bootstrapRegistryForApp(): Promise<void> {
-  if (getStoredAuthToken()) {
-    await initAuthoringRegistry()
-    return
-  }
+function hydrateLocalReady(): void {
   hydrateFromLocal()
   setState({
     status: 'ready',
@@ -92,16 +88,32 @@ export async function bootstrapRegistryForApp(): Promise<void> {
   })
 }
 
+/** Public app shell: local cache only unless a governance token is present. */
+export async function bootstrapRegistryForApp(): Promise<void> {
+  if (!getStoredAuthToken()) {
+    hydrateLocalReady()
+    return
+  }
+  await initAuthoringRegistry()
+}
+
 export async function initAuthoringRegistry(force = false): Promise<void> {
   if (!force && state.status === 'ready' && state.source === 'backend') return
   if (!force && initPromise) return initPromise
 
+  const generation = ++initGeneration
+  const backgroundRefresh = force && state.status === 'ready'
+
   initPromise = (async () => {
-    setState({ status: 'loading', error: null })
+    if (!backgroundRefresh) {
+      setState({ status: 'loading', error: null })
+    }
 
     const healthy = await fetchRegistryHealth()
+    if (generation !== initGeneration) return
     if (!healthy) {
       hydrateFromLocal()
+      if (generation !== initGeneration) return
       setState({
         status: 'offline',
         source: 'local',
@@ -113,17 +125,20 @@ export async function initAuthoringRegistry(force = false): Promise<void> {
 
     try {
       let snapshot = sanitizeRegistrySnapshot(await fetchRegistrySnapshot())
+      if (generation !== initGeneration) return
       cache.hydrateRegistryCache(snapshot)
 
       if (!hasMigratedFlag()) {
         const local = loadLocalAuthoringSnapshot()
         if (countLocalDocuments(local) > 0) {
           snapshot = sanitizeRegistrySnapshot(await migrateRegistry(local))
+          if (generation !== initGeneration) return
           cache.hydrateRegistryCache(snapshot)
         }
         markMigratedFlag()
       }
 
+      if (generation !== initGeneration) return
       setState({
         status: 'ready',
         source: 'backend',
@@ -138,6 +153,7 @@ export async function initAuthoringRegistry(force = false): Promise<void> {
           : error instanceof Error
             ? error.message
             : 'registry_error'
+      if (generation !== initGeneration) return
       setState({
         status: 'offline',
         source: 'local',

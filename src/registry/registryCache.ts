@@ -8,9 +8,9 @@ let riskRules: Record<string, RiskRuleConfigDocument[]> = {}
 let auditLog: AuditEvent[] = []
 
 export function hydrateRegistryCache(snapshot: RegistrySnapshot): void {
-  scenarios = structuredClone(snapshot.scenarios ?? {})
-  riskRules = structuredClone(snapshot.riskRules ?? {})
-  auditLog = structuredClone(snapshot.auditLog ?? [])
+  scenarios = snapshot.scenarios ?? {}
+  riskRules = snapshot.riskRules ?? {}
+  auditLog = [...(snapshot.auditLog ?? [])]
 }
 
 export function getRegistryCacheSnapshot(): RegistrySnapshot {

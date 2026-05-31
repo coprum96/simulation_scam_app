@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  getRegistryBootstrapState,
+  subscribeRegistryBootstrap,
+} from '../../registry/bootstrapRegistry'
 import { Link, useLocation } from 'react-router-dom'
 import { authoringEditPath, authoringNewPath, ROUTES } from '../../config'
 import { ru } from '../../content/ru'
@@ -21,14 +25,26 @@ export function ScenarioAuthoringListPage() {
   const { canEdit, canImport, canPublish } = useGovernanceAccess()
   const location = useLocation()
   const createDenied = (location.state as { accessDenied?: string } | null)?.accessDenied === 'create'
+  const [boot, setBoot] = useState(() => getRegistryBootstrapState())
   const refreshKey = useScenarioAuthoringStore((s) => s.refreshKey)
   const ensureRegistry = useScenarioAuthoringStore((s) => s.ensureRegistry)
   const importDocuments = useScenarioAuthoringStore((s) => s.importDocuments)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  useEffect(() => subscribeRegistryBootstrap(() => setBoot(getRegistryBootstrapState())), [])
+
   useEffect(() => {
     void ensureRegistry()
   }, [ensureRegistry])
+
+  if (boot.status === 'loading' || boot.status === 'idle') {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-center">
+        <p className="text-sm font-medium text-slate-800">{ru.registry.appLoadingTitle}</p>
+        <p className="max-w-md text-sm text-slate-500">{ru.registry.loading}</p>
+      </div>
+    )
+  }
 
   const catalog = useMemo(() => {
     void refreshKey

@@ -65,6 +65,11 @@ export const useScenarioAuthoringStore = create<ScenarioAuthoringStoreState>((se
   registryError: null,
   refresh: () => set((s) => ({ refreshKey: s.refreshKey + 1 })),
   ensureRegistry: async () => {
+    const boot = getRegistryBootstrapState()
+    if (boot.status === 'ready' || boot.status === 'offline') {
+      syncRegistryFlags(set)
+      return
+    }
     await initAuthoringRegistry()
     syncRegistryFlags(set)
     set((s) => ({ refreshKey: s.refreshKey + 1 }))

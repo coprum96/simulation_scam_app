@@ -16,16 +16,31 @@ export class RegistryApiError extends Error {
   }
 }
 
+const REGISTRY_FETCH_TIMEOUT_MS = 20_000
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${REGISTRY_API_BASE}${path}`
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthRequestHeaders(),
-      ...(init?.headers ?? {}),
-    },
-  })
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), REGISTRY_FETCH_TIMEOUT_MS)
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthRequestHeaders(),
+        ...(init?.headers ?? {}),
+      },
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new RegistryApiError(0, 'request_timeout')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
   if (!response.ok) {
     let message = response.statusText
     try {

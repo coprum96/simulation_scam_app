@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { adminLoginPath } from '../../config'
 import { ru } from '../../content/ru'
-import { initAuthoringRegistry } from '../../registry/bootstrapRegistry'
 import { useGovernanceStore } from './governanceStore'
 
 export function AuthoringRouteGuard() {
@@ -14,10 +13,6 @@ export function AuthoringRouteGuard() {
   useEffect(() => {
     if (status === 'idle') void restoreSession()
   }, [status, restoreSession])
-
-  useEffect(() => {
-    if (status === 'authenticated') void initAuthoringRegistry(true)
-  }, [status])
 
   if (status === 'idle' || status === 'loading') {
     return (
